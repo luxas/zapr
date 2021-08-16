@@ -142,17 +142,21 @@ func (zl *zapLogger) V(level int) logr.Logger {
 }
 
 func (zl *zapLogger) WithValues(keysAndValues ...interface{}) logr.Logger {
-	newLogger := zl.l.With(handleFields(zl.l, keysAndValues)...)
-	return newLoggerWithExtraSkip(newLogger, 0)
+	newLogger := *zl
+	newLogger.l = zl.l.With(handleFields(zl.l, keysAndValues)...)
+	return &newLogger
 }
 
 func (zl *zapLogger) WithName(name string) logr.Logger {
-	newLogger := zl.l.Named(name)
-	return newLoggerWithExtraSkip(newLogger, 0)
+	newLogger := *zl
+	newLogger.l = zl.l.Named(name)
+	return &newLogger
 }
 
 func (zl *zapLogger) WithCallDepth(depth int) logr.Logger {
-	return newLoggerWithExtraSkip(zl.l, depth)
+	newLogger := *zl
+	newLogger.l = zl.l.WithOptions(zap.AddCallerSkip(depth))
+	return &newLogger
 }
 
 // Underlier exposes access to the underlying logging implementation.  Since
@@ -167,19 +171,13 @@ func (zl *zapLogger) GetUnderlying() *zap.Logger {
 	return zl.l
 }
 
-// newLoggerWithExtraSkip allows creation of loggers with variable levels of callstack skipping
-func newLoggerWithExtraSkip(l *zap.Logger, callerSkip int) logr.Logger {
-	log := l.WithOptions(zap.AddCallerSkip(callerSkip))
-	return &zapLogger{
-		l:   log,
-		lvl: zap.InfoLevel,
-	}
-}
-
 // NewLogger creates a new logr.Logger using the given Zap Logger to log.
 func NewLogger(l *zap.Logger) logr.Logger {
 	// creates a new logger skipping one level of callstack
-	return newLoggerWithExtraSkip(l, 1)
+	return &zapLogger{
+		l:   l.WithOptions(zap.AddCallerSkip(1)),
+		lvl: zap.InfoLevel,
+	}
 }
 
 var _ logr.Logger = &zapLogger{}
