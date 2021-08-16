@@ -22,13 +22,9 @@ import (
 	"go.uber.org/zap"
 )
 
-type E struct {
-	str string
-}
+type StringErr string
 
-func (e E) Error() string {
-	return e.str
-}
+func (e StringErr) Error() string { return string(e) }
 
 func Helper(log logr.Logger, msg string) {
 	helper2(log, msg)
@@ -44,7 +40,20 @@ func main() {
 	log.Info("hello", "val1", 1, "val2", map[string]int{"k": 1})
 	log.V(1).Info("you should see this")
 	log.V(1).V(1).Info("you should NOT see this")
+	log.V(1).WithName("Verbose").V(1).Info("you should NOT see this")
+	log.V(1).WithValues("foo", true).V(1).Info("you should NOT see this")
+	Helper(log.V(2), "you should NOT see this")
 	log.Error(nil, "uh oh", "trouble", true, "reasons", []float64{0.1, 0.11, 3.14})
-	log.Error(E{"an error occurred"}, "goodbye", "code", -1)
+	log.Error(StringErr("an error occurred"), "goodbye", "code", -1)
 	Helper(log, "thru a helper")
 }
+
+/*
+	Expected output:
+
+	{"level":"info","logger":"MyName","msg":"hello","user":"you","val1":1,"val2":{"k":1}}
+	{"level":"debug","logger":"MyName","msg":"you should see this","user":"you"}
+	{"level":"error","logger":"MyName","msg":"uh oh","user":"you","trouble":true,"reasons":[0.1,0.11,3.14]}
+	{"level":"error","logger":"MyName","msg":"goodbye","user":"you","code":-1,"error":"an error occurred"}
+	{"level":"info","logger":"MyName","msg":"thru a helper","user":"you"}
+*/
